@@ -18,12 +18,12 @@ class TwoNetworks(nn.Module):
 
         # TODO select all parts of the two pretrained networks, except for
         # the last linear layer.
-        self.fully_conv1 =
-        self.fully_conv2 =
+        self.fully_conv1 = ""
+        self.fully_conv2 = ""
 
         # TODO create a linear layer that has in_channels equal to
         # the number of in_features from both networks summed together.
-        self.linear = nn.Linear(, num_classes)
+        self.linear = nn.Linear(_, num_classes)
 
 
     def forward(self, inputs1, inputs2):
@@ -45,9 +45,7 @@ class SingleNetwork(nn.Module):
 
     def __init__(self, pretrained_net, weight_init=None):
         super(SingleNetwork, self).__init__()
-
         _, num_classes = get_classes_list()
-
 
         if weight_init is not None:
             # TODO Here we want an additional channel in the weights tensor, specifically in the first
@@ -71,8 +69,3 @@ class SingleNetwork(nn.Module):
 
     def forward(self, inputs):
         return self.net(inputs)
-
-
-
-
-

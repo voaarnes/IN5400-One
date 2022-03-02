@@ -1,11 +1,14 @@
 import torch
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+from PIL import Image
+from torchvision import transforms
 from torch.utils.data import Dataset
 from sklearn.preprocessing import MultiLabelBinarizer
-import os
-import PIL.Image
-import pandas as pd
+from sklearn.model_selection import train_test_split
 
-SEED = 37
+SEED = 0
 
 
 def get_classes_list():
@@ -45,56 +48,65 @@ class ChannelSelect(torch.nn.Module):
 class RainforestDataset(Dataset):
     def __init__(self, root_dir, trvaltest, transform):
 
-        self.imgNames = []
         self.bLabels = []
         self.imgFiles = []
         self.ending = '.tif'
+        self.transform = transform
 
         classes, num_classes = get_classes_list()
         mlb = MultiLabelBinarizer()
         # TODO Binarise your multi-labels from the string. HINT: There is a useful sklearn function to
         # help you binarise from strings.
         img_labels = pd.read_csv(root_dir+'train_v2.csv')
-        self.imgNames = img_labels["image_name"]
-        self.bLabels = mlb.fit_transform(img_labels["tags"].str.split(" "))
-
+        imgNames = img_labels["image_name"]
+        binaryLabels = mlb.fit_transform(img_labels["tags"].str.split(" "))
 
         # Load PATHS of first 1000 images
         count = 0
-        for iName in self.imgNames:
+        imageFiles = []
+        for iName in imgNames:
             if(count>1000): break;
             name = os.path.join(root_dir+'train-tif-v2/', iName + self.ending)
             print(name)
-            self.imgFiles.append(name)
+            imageFiles.append(name)
             count+=1
 
 
-
+        print(imageFiles[0], "   ", binaryLabels[0])
         # TODO Perform a test train split. It's recommended to use sklearn's train_test_split with the following
         # parameters: test_size=0.33 and random_state=0 - since these were the parameters used
         # when calculating the image statistics you are using for data normalisation.
-
         #for debugging you can use a test_size=0.66 - this trains then faster
 
+
+        X_train, X_val, y_train, y_val = train_test_split(imageFiles, binaryLabels, test_size=0.33, random_state=SEED)
+        if(trvaltest==0):
+            self.imgFiles = X_train
+            self.bLabels = y_train
+        elif(trvaltest==1):
+            self.imgFiles = X_val
+            self.bLabels = y_val
 
         # OR optionally you could do the test train split of your filenames and labels once, save them, and
         # from then onwards just load them from file.
 
 
     def __len__(self):
-        return len(self.img_filenames)
+        return len(self.imgFiles)
 
     def __getitem__(self, idx):
         # TODO get the label and filename, and load the image from file.
-        img = "temp"
+        img = Image.open(self.imgFiles[idx])
         labels = self.bLabels[idx]
-
-        sample = {'image': img,
-                  'label': labels,
-                  'filename': self.img_filenames[idx]}
+        if self.transform:
+            img = self.transform(img)
+        else:
+            img = transforms.ToTensor()(img)
+        sample = {'image': img, 'label': labels, 'filename': self.imgFiles[idx]}
         return sample
 
 
 ###################################################################################
-root_dir = "C:/data/rainforest/"
-rdata = RainforestDataset(root_dir, 0, None)
+rdir = "C:/data/rainforest/"
+rdata = RainforestDataset(rdir, 0, None)
+rdata.__getitem__(0)

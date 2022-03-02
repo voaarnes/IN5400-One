@@ -8,6 +8,8 @@ from torch.optim import lr_scheduler
 import torchvision
 from torchvision import datasets, models, transforms, utils
 from torch.utils.data import Dataset, DataLoader
+from torchvision.models import resnet18
+
 #import matplotlib.pyplot as plt
 
 from torch import Tensor
@@ -20,6 +22,11 @@ import PIL.Image
 import sklearn.metrics
 
 from typing import Callable, Optional
+from RainforestDataset import RainforestDataset
+from YourNetwork import SingleNetwork
+
+
+RDIR = "C:/data/rainforest/"  #'/itf-fi-ml/shared/IN5400/dataforall/mandatory1/'
 
 
 def train_epoch(model, trainloader, criterion, device, optimizer):
@@ -78,7 +85,7 @@ def evaluate_meanavgprecision(model, dataloader, criterion, device, numcl):
 
 
     for c in range(numcl):
-      avgprecs[c]= # TODO, nope it is not sklearn.metrics.precision_score
+      avgprecs[c]= "# TODO, nope it is not sklearn.metrics.precision_score"
 
     return avgprecs, np.mean(losses), concat_labels, concat_pred, fnames
 
@@ -122,13 +129,15 @@ def traineval2_model_nocv(dataloader_train, dataloader_test ,  model ,  criterio
 
 
 class yourloss(nn.modules.loss._Loss):
-
     def __init__(self, reduction: str = 'mean') -> None:
-        #TODO
+        return
 
     def forward(self, input_: Tensor, target: Tensor) -> Tensor:
         #TODO
-        return loss
+        m = nn.Sigmoid()
+        loss = nn.BCELoss()
+        output = loss(m(input_), target)
+        return output
 
 
 def runstuff():
@@ -165,14 +174,14 @@ def runstuff():
 
   # Datasets
   image_datasets={}
-  image_datasets['train']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/',trvaltest=0, transform=data_transforms['train'])
-  image_datasets['val']=dataset_voc(root_dir='/itf-fi-ml/shared/IN5400/dataforall/mandatory1/',trvaltest=1, transform=data_transforms['val'])
+  image_datasets['train'] = RainforestDataset(root_dir=RDIR,trvaltest=0, transform=data_transforms['train'])
+  image_datasets['val'] = RainforestDataset(root_dir=RDIR,trvaltest=1, transform=data_transforms['val'])
 
   # Dataloaders
   #TODO use num_workers=1
   dataloaders = {}
-  dataloaders['train'] = #
-  dataloaders['val'] = #
+  dataloaders['train']= torch.utils.data.DataLoader(image_datasets['train'], batch_size=config['batchsize_train'], num_workers=1)
+  dataloaders['val']= torch.utils.data.DataLoader(image_datasets['val'], batch_size=config['batchsize_val'], num_workers=1)
 
   # Device
   if True == config['use_gpu']:
@@ -180,21 +189,28 @@ def runstuff():
   else:
       device= torch.device('cpu')
 
-  # Model
+  # Model 1101s
   # TODO create an instance of the network that you want to use.
-  model = # TwoNetworks()
-
+  # TwoNetworks()
+  print("reached")
+  resmodel = resnet18(pretrained=True)
+  model = SingleNetwork(resmodel)
   model = model.to(device)
+
+  for param in model.parameters():
+      print(param)
 
   lossfct = yourloss()
 
-  #TODO
+  #TODO 1101
   # Observe that all parameters are being optimized
-  someoptimizer = #
+  someoptimizer = torch.optim.Adam(model.parameters(), lr=config['learningRate'])
 
   # Decay LR by a factor of 0.3 every X epochs
   #TODO
-  somelr_scheduler = #
+  #somelr_scheduler = torch.optim.LinearLR(someoptimizer, start_factor=0.3, total_iters=config['maxnumepochs'])
+  lambda1 = lambda epoch: 0.3 ** epoch
+  somelr_scheduler = torch.optim.lr_scheduler.LambdaLR(someoptimizer, lr_lambda=lambda1)
 
   best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
 
