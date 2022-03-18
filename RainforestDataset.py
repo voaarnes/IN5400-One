@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.model_selection import train_test_split
 
+NUMIMAGES = 1000#40478
 SEED = 0
 
 
@@ -46,7 +47,7 @@ class ChannelSelect(torch.nn.Module):
 
 
 class RainforestDataset(Dataset):
-    def __init__(self, root_dir, trvaltest, transform):
+    def __init__(self, root_dir, trvaltest, transform=None):
 
         self.bLabels = []
         self.imgFiles = []
@@ -61,25 +62,25 @@ class RainforestDataset(Dataset):
         imgNames = img_labels["image_name"]
         binaryLabels = mlb.fit_transform(img_labels["tags"].str.split(" "))
 
-        # Load PATHS of first 1000 images
+        # Load PATHS of first NUMIMAGES images
         count = 0
         imageFiles = []
+        imageLabels = []
         for iName in imgNames:
-            if(count>1000): break;
+            if(count>NUMIMAGES): break;
             name = os.path.join(root_dir+'train-tif-v2/', iName + self.ending)
-            print(name)
             imageFiles.append(name)
+            imageLabels.append(binaryLabels[count])
             count+=1
 
 
-        print(imageFiles[0], "   ", binaryLabels[0])
         # TODO Perform a test train split. It's recommended to use sklearn's train_test_split with the following
         # parameters: test_size=0.33 and random_state=0 - since these were the parameters used
         # when calculating the image statistics you are using for data normalisation.
         #for debugging you can use a test_size=0.66 - this trains then faster
 
 
-        X_train, X_val, y_train, y_val = train_test_split(imageFiles, binaryLabels, test_size=0.33, random_state=SEED)
+        X_train, X_val, y_train, y_val = train_test_split(imageFiles, imageLabels, test_size=0.33, random_state=SEED)
         if(trvaltest==0):
             self.imgFiles = X_train
             self.bLabels = y_train
@@ -96,17 +97,25 @@ class RainforestDataset(Dataset):
 
     def __getitem__(self, idx):
         # TODO get the label and filename, and load the image from file.
-        img = Image.open(self.imgFiles[idx])
+        image = Image.open(self.imgFiles[idx])
         labels = self.bLabels[idx]
+        rgbImg = []
+        irImg = []
+
         if self.transform:
-            img = self.transform(img)
-        else:
-            img = transforms.ToTensor()(img)
-        sample = {'image': img, 'label': labels, 'filename': self.imgFiles[idx]}
+            getRGB = ChannelSelect()
+            getIR = ChannelSelect([3])
+            image = self.transform(image)
+            rgbImg = getRGB(image)
+            irImg = getIR(image)
+
+
+        #print(irImg)
+        #irImg = torch.cat((irImg, irImg, irImg))     # Turn single channel IR into 3 identical channels
+        #print(irImg)
+
+        sample = {'image': rgbImg, 'label': labels, 'irimage': irImg, 'filename': self.imgFiles[idx]}
         return sample
 
 
 ###################################################################################
-rdir = "C:/data/rainforest/"
-rdata = RainforestDataset(rdir, 0, None)
-rdata.__getitem__(0)
