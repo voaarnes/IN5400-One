@@ -372,15 +372,18 @@ def reproductionRoutine(numcl, newScores):
     filenames, concat_pred, concat_labels = fetchScores(numcl)
 
     for c in range(numcl):
-        #avgprecs[c]= "# TODO, nope it is not sklearn.metrics.precision_score"
         val_true, val_pred = concat_labels[:,c], concat_pred[:,c]
         tempAvgprecs = sklearn.metrics.average_precision_score(val_true, val_pred)
         if(np.isnan(tempAvgprecs)): bestModelScores[c] = 0
         else: bestModelScores[c] = tempAvgprecs
 
+
+    #Calculate the percentage and absolute error
     percentageErr = [abs(x-y)/x*100 for x,y in zip(bestModelScores,newScores)]
     percentageErrArr = np.array(percentageErr)
     absoluteErr = np.subtract(newScores, bestModelScores)
+
+    #Print the results from aboce
     print("Saved Best APs\n", bestModelScores)
     print("Current APs\n",newScores)
     print("\n\n####################################")
@@ -390,6 +393,7 @@ def reproductionRoutine(numcl, newScores):
     print(absoluteErr)
 
 
+#Class defining the loss function used in the code
 class yourloss(nn.modules.loss._Loss):
     def __init__(self, reduction: str = 'mean') -> None:
         super(yourloss, self).__init__()
@@ -486,17 +490,14 @@ def runstuff():
 
 
   model = model.to(device)
-  #for param in model.parameters():
-    #print(param)
 
-  #lossfct = nn.BCELoss()
+  # Create loss function based on custom function
   lossfct = yourloss()
-  #TODO
+
   # Observe that all parameters are being optimized
   someoptimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
+
   # Decay LR by a factor of 0.3 every X epochs
-  #TODO
-  #somelr_scheduler = torch.optim.lr_scheduler.LinearLR(someoptimizer, start_factor=config['scheduler_factor'], total_iters=config['maxnumepochs'])
   somelr_scheduler = torch.optim.lr_scheduler.StepLR(someoptimizer, step_size=config['scheduler_stepsize'], gamma=config['scheduler_factor'], verbose=True)
   if(sys.argv[1]!='2'):
       best_epoch, best_measure, bestweights, trainlosses, testlosses, testperfs, mAPs = traineval2_model_nocv(dataloaders['train'], dataloaders['val'] ,  model ,  lossfct, someoptimizer, somelr_scheduler, num_epochs= config['maxnumepochs'], device = device , numcl = config['numcl'] )
